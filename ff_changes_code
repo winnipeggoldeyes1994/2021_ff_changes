@@ -1,0 +1,236 @@
+#LINK TO SAVANT 2021 FILE (savant_2021_complete.csv)
+https://drive.google.com/drive/folders/13_1g3O6XKBKCjPRHHYPpPPrCB1v5JxmF
+
+#FILTER ALL PITCHES FROM ALL STARTS OF AT LEAST 75 PITCHES
+savant_2021_gs75 <- savant_2021 %>% 
+  select(game_pk, game_date, player_name, pitcher, at_bat_number, pitch_number,
+         pitch_type, release_speed, release_spin_rate, spin_axis, release_pos_x,
+         release_pos_z, release_pos_y, release_extension, effective_speed,
+         pfx_x, pfx_z, plate_x, plate_z, sz_top, sz_bot, zone, type, bb_type,
+         balls, strikes, batter, description, launch_speed, launch_angle,
+         woba_value, woba_denom, inning) %>% 
+  mutate(pitch_type = fct_relevel(pitch_type, "FF", "SI", "FC", "SL", "CU", "KC", "CH",
+                                  "FS", "SC", "CS", "KN", "FA", "EP")) %>% 
+  group_by(pitcher) %>% 
+  mutate(season_pitches = sum(n())) %>% 
+  ungroup() %>% 
+  group_by(game_pk, pitcher) %>% 
+  arrange(pitcher, at_bat_number, pitch_number) %>% 
+  mutate(tot_pitch = row_number(),
+         max_pitch = max(tot_pitch),
+         min_inning = min(inning)) %>% 
+  filter(max_pitch >= 75,
+         min_inning == 1) %>% 
+  relocate(c(tot_pitch, max_pitch), .before = pitch_type) %>% 
+  arrange(game_date, game_pk, pitcher, tot_pitch) %>% 
+  ungroup()
+
+#PLOT AVERAGE VELO BY PITCH COUNT
+savant_2021_gs75 %>% 
+  filter(pitch_type %in% c("FF", "SI"),
+         max_pitch >= 90) %>% 
+  group_by(tot_pitch, pitch_type) %>% 
+  summarize(avg_velo = mean(release_speed),
+            avg_rel_height = mean(release_pos_z),
+            avg_extension = 60.5 - mean(release_pos_y)) %>% 
+  ggplot(aes(x = tot_pitch, y = avg_velo, color = pitch_type))+
+  geom_line(size = 0.75)+
+  stat_summary(fun.y = mean, geom = "line", size = 0.75)+
+  labs(title = "2021 MLB Average FF/SI Velocity by Pitch Count",
+       subtitle = "All Starts of at Least 90 Pitches",
+       x = "Pitch Count Position",
+       y = "Average Velocity (mph)")+
+  scale_color_discrete(name = "Pitch Type")+
+  scale_x_continuous(breaks = seq(0, 150, by = 20))+
+  scale_y_continuous(breaks = seq(90, 100, by = 1))+
+  geom_smooth(aes(group = pitch_type), color = "black", linetype = 2,
+              size = 0.25, se = FALSE)+
+  theme_minimal()
+
+
+#PLOT AVERAGE RELEASE HEIGHT BY PITCH COUNT (90 PITCHES)
+savant_2021_gs75 %>% 
+  filter(pitch_type %in% c("FF", "SI"),
+         max_pitch >= 90) %>% 
+  group_by(tot_pitch, pitch_type) %>% 
+  summarize(avg_velo = mean(release_speed),
+            avg_rel_height = mean(release_pos_z),
+            avg_extension = 60.5 - mean(release_pos_y)) %>% 
+  ggplot(aes(x = tot_pitch, y = avg_rel_height*12, color = pitch_type))+
+  geom_line(size = 0.75)+
+  stat_summary(fun.y = mean, geom = "line", size = 0.75)+
+  labs(title = "2021 MLB Average FF/SI Release Height by Pitch Count",
+       subtitle = "All Starts of at Least 90 Pitches",
+       x = "Pitch Count Position",
+       y = "Average Release Height (inches)")+
+  scale_color_discrete(name = "Pitch Type")+
+  scale_x_continuous(breaks = seq(0, 150, by = 20))+
+  scale_y_continuous(breaks = seq(0, 96, by = 1))+
+  geom_smooth(aes(group = pitch_type), color = "black", linetype = 2,
+              size = 0.25, se = FALSE)+
+  theme_minimal()
+
+#PLOT AVERAGE RELEASE HEIGHT BY PITCH COUNT (90 PITCHES NO OUTLIER RELEASE HEIGHT)
+savant_2021_gs75 %>% 
+  filter(pitch_type %in% c("FF", "SI"),
+         max_pitch >= 90 & max_pitch <= 105) %>% 
+  group_by(tot_pitch, pitch_type) %>% 
+  summarize(avg_velo = mean(release_speed),
+            avg_rel_height = mean(release_pos_z),
+            avg_extension = 60.5 - mean(release_pos_y)) %>% 
+  ggplot(aes(x = tot_pitch, y = avg_rel_height*12, color = pitch_type))+
+  geom_line(size = 0.75)+
+  stat_summary(fun.y = mean, geom = "line", size = 0.75)+
+  labs(title = "2021 MLB Average FF/SI Release Height by Pitch Count",
+       subtitle = "All Starts Between 90 and 105 Pitches",
+       x = "Pitch Count Position",
+       y = "Average Release Height (inches)")+
+  scale_color_discrete(name = "Pitch Type")+
+  scale_x_continuous(breaks = seq(0, 150, by = 20))+
+  scale_y_continuous(breaks = seq(0, 96, by = 1))+
+  geom_smooth(aes(group = pitch_type), color = "black", linetype = 2,
+              size = 0.25, se = FALSE)+
+  theme_minimal()
+
+#PLOT AVERAGE EXTENSION BY PITCH COUNT
+savant_2021_gs75 %>% 
+  filter(pitch_type %in% c("FF", "SI"),
+         max_pitch <= 90) %>% 
+  group_by(tot_pitch, pitch_type) %>% 
+  summarize(avg_velo = mean(release_speed),
+            avg_rel_height = mean(release_pos_z),
+            avg_extension = 60.5 - mean(release_pos_y)) %>% 
+  ggplot(aes(x = tot_pitch, y = avg_extension*12, color = pitch_type))+
+  geom_line(size = 0.75)+
+  stat_summary(fun.y = mean, geom = "line", size = 0.75)+
+  labs(title = "2021 MLB Average FF/SI Release Extension by Pitch Count",
+       subtitle = "All Starts of at Least 75 Pitches",
+       x = "Pitch Count Position",
+       y = "Average Release Extension (inches)")+
+  scale_color_discrete(name = "Pitch Type")+
+  scale_x_continuous(breaks = seq(0, 150, by = 20))+
+  scale_y_continuous(breaks = seq(0, 96, by = 1))+
+  geom_smooth(aes(group = pitch_type), color = "black", linetype = 2,
+              size = 0.25, se = FALSE)+
+  theme_minimal()
+
+
+#LARGEST VELO DIFFERENCES BY PITCHER (PITCHES 1-10 VERSUS 90-100)
+savant_2021_gs75 %>% 
+  filter(pitch_type == "FF",
+         max_pitch >= 90) %>% 
+  group_by(player_name, tot_pitch) %>% 
+  summarize(avg_velo = mean(release_speed),
+            avg_rel_height = mean(release_pos_z),
+            avg_extension = 60.5 - mean(release_pos_y),
+            season_pitches = mean(season_pitches)) %>% 
+  filter(tot_pitch %in% c(1:10, 90:100)) %>% 
+  ungroup() %>% 
+  group_by(player_name) %>% 
+  mutate(tot_pitch = case_when(tot_pitch <= 10 ~ "START",
+                               TRUE ~ "END")) %>% 
+  ungroup() %>% 
+  group_by(player_name, tot_pitch) %>% 
+  summarize(avg_velo = mean(avg_velo),
+            season_pitches = mean(season_pitches)) %>% 
+  pivot_wider(names_from = tot_pitch, values_from = avg_velo) %>% 
+  mutate(velo_diff = END - START) %>% 
+  arrange(desc(velo_diff)) %>% 
+  filter(season_pitches >= 1000,
+         velo_diff != "NA") %>% 
+  ungroup() %>% 
+  mutate(id = row_number()) %>% 
+  filter(id %in% c(1:10, 147:158)) %>% 
+  ggplot(aes(x = reorder(player_name, velo_diff), y = velo_diff, fill = END))+
+  geom_col()+
+  coord_flip()+
+  labs(title = "2021 MLB Largest FF Velocity Differences (Ending - Starting)",
+       subtitle = "Includes All Starts of at Least 90 Pitches, and Minimum 1,000 Pitches Thrown for Season",
+       x = "Pitcher",
+       y = "Velocity Difference (mph)")+
+  scale_fill_gradient(high = "red", low = "dark blue",
+                      name = "End Velocity")
+
+
+#AVG FF VELO BY PITCH COUNT BY PITCHER
+savant_2021_gs75 %>% 
+  filter(pitch_type == "FF",
+         max_pitch >= 90,
+         player_name == "Scherzer, Max") %>% 
+  group_by(tot_pitch) %>% 
+  summarize(avg_velo = mean(release_speed),
+            avg_rel_height = mean(release_pos_z),
+            avg_extension = 60.5 - mean(release_pos_y)) %>% 
+  ggplot(aes(x = tot_pitch, y = avg_velo))+
+  geom_line(size = 0.75)+
+  stat_summary(fun.y = mean, geom = "line", size = 0.75)+
+  labs(title = "2021 Max Scherzer FF Velocity by Pitch Count",
+       subtitle = "All Starts of at Least 90 Pitches",
+       x = "Pitch Count Position",
+       y = "Average Velocity (mph)")+
+  scale_x_continuous(breaks = seq(0, 150, by = 20))+
+  scale_y_continuous(breaks = seq(90, 100, by = 1))+
+  geom_smooth(se = FALSE)+
+  theme_minimal()
+
+
+#LARGEST RELEASE HEIGHT DIFFERENCES BY PITCHER (PITCHES 1-10 VERSUS 90-100)
+savant_2021_gs75 %>% 
+  filter(pitch_type == "FF",
+         max_pitch >= 90) %>% 
+  group_by(player_name, tot_pitch) %>% 
+  summarize(avg_velo = mean(release_speed),
+            avg_rel_height = mean(release_pos_z),
+            avg_extension = 60.5 - mean(release_pos_y),
+            season_pitches = mean(season_pitches)) %>% 
+  filter(tot_pitch %in% c(1:10, 90:100)) %>% 
+  ungroup() %>% 
+  group_by(player_name) %>% 
+  mutate(tot_pitch = case_when(tot_pitch <= 10 ~ "START",
+                               TRUE ~ "END")) %>% 
+  ungroup() %>% 
+  group_by(player_name, tot_pitch) %>% 
+  summarize(avg_rel_height = mean(avg_rel_height),
+            season_pitches = mean(season_pitches),
+            avg_velo = mean(avg_velo)) %>% 
+  pivot_wider(names_from = tot_pitch, values_from = c(avg_rel_height, avg_velo)) %>% 
+  mutate(rel_height_diff = (avg_rel_height_END - avg_rel_height_START)*-1,
+         velo_diff = avg_velo_END - avg_velo_START) %>% 
+  arrange(desc(rel_height_diff)) %>% 
+  filter(season_pitches >= 1000,
+         rel_height_diff != "NA") %>% 
+  ungroup() %>% 
+  slice_head(n = 20) %>% 
+  ggplot(aes(x = reorder(player_name, rel_height_diff), y = rel_height_diff*12,
+             fill = velo_diff))+
+  geom_col()+
+  coord_flip()+
+  labs(title = "2021 MLB Largest Drop in FF Release Height",
+       subtitle = "Includes All Starts of at Least 90 Pitches, and Minimum 1,000 Pitches Thrown for Season",
+       x = "Pitcher",
+       y = "Release Height Drop (inches)")+
+  scale_fill_gradient2(name = "Velocity Change",
+                      high = "red", low = "blue")+
+  theme_minimal()
+
+
+#AVG FF RELEASE HEIGHT BY PITCH COUNT BY PITCHER
+savant_2021_gs75 %>% 
+  filter(pitch_type == "FF",
+         max_pitch >= 90,
+         player_name == "Zimmermann, Bruce") %>% 
+  group_by(tot_pitch) %>% 
+  summarize(avg_velo = mean(release_speed),
+            avg_rel_height = mean(release_pos_z),
+            avg_extension = 60.5 - mean(release_pos_y)) %>% 
+  ggplot(aes(x = tot_pitch, y = avg_rel_height*12))+
+  geom_line(size = 0.75)+
+  stat_summary(fun.y = mean, geom = "line", size = 0.75)+
+  labs(title = "2021 Bruce Zimmermann FF Release Height by Pitch Count",
+       subtitle = "All Starts of at Least 90 Pitches",
+       x = "Pitch Count Position",
+       y = "Average Release Height (inches)")+
+  scale_x_continuous(breaks = seq(0, 150, by = 20))+
+  scale_y_continuous(breaks = seq(0, 100, by = 1))+
+  geom_smooth(se = FALSE)+
+  theme_minimal()
